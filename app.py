@@ -12,7 +12,7 @@ load_dotenv()
 # 備考：OpenAIのAPIキーは環境変数から取得されることを前提としています。
 def get_llm_response(system_message, user_message):
     try:
-        llm = OpenAI(temperature=0.7)
+        llm = OpenAI(temperature=0.7, max_tokens=1500)
         prompt = PromptTemplate(
             input_variables=["system_message", "user_message"],
             template="{system_message}\n\n{user_message}"
@@ -23,19 +23,31 @@ def get_llm_response(system_message, user_message):
     except Exception as e:
         return f"エラーが発生しました: {str(e)}"
 
+# 分野が切り替わった際に回答と相談内容をクリアする関数
+def clear_state():
+    st.session_state["input_message"] = ""
+    st.session_state["response"] = ""
+
 def main():
     st.set_page_config(page_title="【提出課題】LLM機能を搭載したWebアプリ", layout="wide")
 
     # StreamlitのUI設定
     st.write("##### 相談分野のLLM専門家が質問に回答します。")
     st.write("入力フォームに相談事項を入力し、「相談」ボタンを押すことで回答が得られます。")
+    
+    # 相談分野の選択
     selected_item = st.radio(
         "相談分野を選択してください。",
-        ["健康", "キャリア"]
+        ["健康", "キャリア"],
+        on_change=clear_state
     )
 
     # ユーザーからの入力を受け取る
-    input_message = st.text_input("相談内容を入力してください。", placeholder="ここに相談内容を入力してください。")
+    input_message = st.text_input(
+        "相談内容を入力してください。",
+        placeholder="ここに相談内容を入力してください。",
+        key="input_message"
+    )
 
     st.divider()
 
@@ -48,7 +60,11 @@ def main():
             else:
                 system_message = "あなたはキャリアに関する専門カウンセラーです。"
             response = get_llm_response(system_message, input_message)
-            st.write("### 回答:")
-            st.write(response)
+            st.session_state["response"] = response
+
+    # 回答がある場合にのみ表示
+    if st.session_state.get("response"):
+        st.write("### 回答:")
+        st.write(st.session_state["response"])
 
 main()
